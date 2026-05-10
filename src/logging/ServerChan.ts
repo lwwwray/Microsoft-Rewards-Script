@@ -8,15 +8,17 @@ const serverChanQueue = new PQueue({
     carryoverConcurrencyCount: true
 })
 
-export async function sendServerChan(config: WebhookServerChanConfig, content: string): Promise<void> {
+export async function sendServerChan(config: WebhookServerChanConfig, content: string, titleOverride?: string): Promise<void> {
     if (!config?.sendkey) return
+
+    const title = (titleOverride ?? config.title ?? 'Microsoft Rewards 通知').slice(0, 32)
 
     const request: AxiosRequestConfig = {
         method: 'POST',
         url: `https://sctapi.ftqq.com/${config.sendkey}.send`,
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         data: new URLSearchParams({
-            title: (config.title ?? 'Microsoft Rewards 通知').slice(0, 32),
+            title,
             desp: content,
             ...(config.short ? { short: config.short.slice(0, 64) } : {})
         }).toString(),
