@@ -1,14 +1,14 @@
-#!/bin/sh
-set -e
+#!/usr/bin/env bash
+set -euo pipefail
 
-# Ensure Playwright uses preinstalled browsers
+# 确保 Playwright 使用预安装的浏览器
 export PLAYWRIGHT_BROWSERS_PATH=0
 
 SCRIPT_DIR="/usr/src/microsoft-rewards-script"
 DIST_DIR="$SCRIPT_DIR/dist"
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 1. Timezone: default to UTC if not provided
+# 1. 时区设置：未提供时默认使用 UTC
 # ─────────────────────────────────────────────────────────────────────────────
 : "${TZ:=UTC}"
 ln -snf "/usr/share/zoneinfo/$TZ" /etc/localtime
@@ -23,14 +23,14 @@ if [ -z "${CRON_SCHEDULE:-}" ]; then
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 3. Accounts: generate accounts.json from ACCOUNT_N_* env vars
+# 3. 账户配置：从 ACCOUNT_N_* 环境变量生成 accounts.json
 #
-#    Add one numbered block per account in .env, starting at 1:
+#    在 .env 中为每个账户添加编号块，从 1 开始：
 #      ACCOUNT_1_EMAIL, ACCOUNT_1_PASSWORD, ...
 #      ACCOUNT_2_EMAIL, ACCOUNT_2_PASSWORD, ...
 #
-#    All fields match accounts.example.json exactly.
-#    The loop stops at the first missing ACCOUNT_N_EMAIL.
+#    所有字段与 accounts.example.json 完全对应。
+#    当第一个 ACCOUNT_N_EMAIL 缺失时循环停止。
 # ─────────────────────────────────────────────────────────────────────────────
 CONFIG_DIR="$DIST_DIR/config"
 mkdir -p "$CONFIG_DIR"
@@ -109,44 +109,43 @@ done
 
 if [ "$(echo "$account_array" | jq 'length')" -gt 0 ]; then
   echo "$account_array" > "$ACCOUNTS_FILE"
-  echo "[entrypoint] accounts.json written with $(echo "$account_array" | jq 'length') account(s)"
+  echo "[entrypoint] accounts.json 已写入，共 $(echo "$account_array" | jq 'length') 个账户"
 else
-  echo "WARNING: No ACCOUNT_1_EMAIL found. accounts.json not written — script will likely fail." >&2
-  echo "         Set ACCOUNT_1_EMAIL and ACCOUNT_1_PASSWORD in your .env file." >&2
+  echo "警告: 未找到 ACCOUNT_1_EMAIL，accounts.json 未写入 — 脚本可能无法运行。" >&2
+  echo "      请在 .env 文件中设置 ACCOUNT_1_EMAIL 和 ACCOUNT_1_PASSWORD。" >&2
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 4. Config: generate and patch config.json
+# 4. 配置文件：生成并更新 config.json
 #
-#    Behaviour:
-#      - No config.json       → copy config.example.json as starting point
-#      - config.json exists   → use as-is (whether user-edited or previously
-#                               generated); CONFIG_* overrides always applied
-#      - Schema drift         → warn with list of missing keys in both cases;
-#                               never auto-modify the file
+#    行为说明：
+#      - 不存在 config.json       → 以 config.example.json 为模板复制生成
+#      - config.json 已存在       → 直接使用（无论是用户编辑的还是之前生成的）
+#                                   CONFIG_* 覆盖始终会应用
+#      - 配置字段漂移（新增字段） → 警告并列出缺失的字段，不自动修改文件
 #
-#    headless is always forced true — it is not optional in Docker.
+#    headless 始终强制为 true — 在 Docker 中不支持有界面模式。
 #
-#    CONFIG_* env var overrides (applied on every startup):
+#    CONFIG_* 环境变量覆盖（每次启动时应用）：
 #
-#    General:
-#      CONFIG_CLUSTERS=2                 → .clusters
-#      CONFIG_DEBUG_LOGS=true            → .debugLogs
-#      CONFIG_ERROR_DIAGNOSTICS=true     → .errorDiagnostics
-#      CONFIG_GLOBAL_TIMEOUT=30sec       → .globalTimeout
+#    通用配置：
+#      CONFIG_CLUSTERS=2                 → .clusters（并发账户数）
+#      CONFIG_DEBUG_LOGS=true            → .debugLogs（调试日志）
+#      CONFIG_ERROR_DIAGNOSTICS=true     → .errorDiagnostics（错误诊断）
+#      CONFIG_GLOBAL_TIMEOUT=30sec       → .globalTimeout（全局超时）
 #
-#    Workers (boolean):
-#      CONFIG_WORKER_DAILY_SET           → .workers.doDailySet
-#      CONFIG_WORKER_SPECIAL_PROMOTIONS  → .workers.doSpecialPromotions
-#      CONFIG_WORKER_MORE_PROMOTIONS     → .workers.doMorePromotions
-#      CONFIG_WORKER_PUNCH_CARDS         → .workers.doPunchCards
-#      CONFIG_WORKER_APP_PROMOTIONS      → .workers.doAppPromotions
-#      CONFIG_WORKER_DESKTOP_SEARCH      → .workers.doDesktopSearch
-#      CONFIG_WORKER_MOBILE_SEARCH       → .workers.doMobileSearch
-#      CONFIG_WORKER_DAILY_CHECKIN       → .workers.doDailyCheckIn
-#      CONFIG_WORKER_READ_TO_EARN        → .workers.doReadToEarn
+#    任务开关（布尔值）：
+#      CONFIG_WORKER_DAILY_SET           → .workers.doDailySet（每日任务）
+#      CONFIG_WORKER_SPECIAL_PROMOTIONS  → .workers.doSpecialPromotions（特殊活动）
+#      CONFIG_WORKER_MORE_PROMOTIONS     → .workers.doMorePromotions（更多推广）
+#      CONFIG_WORKER_PUNCH_CARDS         → .workers.doPunchCards（打卡任务）
+#      CONFIG_WORKER_APP_PROMOTIONS      → .workers.doAppPromotions（应用推广）
+#      CONFIG_WORKER_DESKTOP_SEARCH      → .workers.doDesktopSearch（桌面搜索）
+#      CONFIG_WORKER_MOBILE_SEARCH       → .workers.doMobileSearch（手机搜索）
+#      CONFIG_WORKER_DAILY_CHECKIN       → .workers.doDailyCheckIn（每日签到）
+#      CONFIG_WORKER_READ_TO_EARN        → .workers.doReadToEarn（阅读赚分）
 #
-#    Search settings:
+#    搜索设置：
 #      CONFIG_SEARCH_SCROLL_RANDOM       → .searchSettings.scrollRandomResults
 #      CONFIG_SEARCH_CLICK_RANDOM        → .searchSettings.clickRandomResults
 #      CONFIG_SEARCH_PARALLEL            → .searchSettings.parallelSearching
@@ -157,39 +156,39 @@ fi
 #      CONFIG_SEARCH_VISIT_TIME          → .searchSettings.searchResultVisitTime
 #      CONFIG_SEARCH_ON_BING_LOCAL       → .searchOnBingLocalQueries
 #
-#    Proxy:
+#    代理：
 #      CONFIG_PROXY_QUERY_ENGINE         → .proxy.queryEngine
 #
-#    Console log filter:
+#    控制台日志过滤：
 #      CONFIG_LOG_FILTER_ENABLED         → .consoleLogFilter.enabled
 #      CONFIG_LOG_FILTER_MODE            → .consoleLogFilter.mode (whitelist|blacklist)
-#      CONFIG_LOG_FILTER_LEVELS          → .consoleLogFilter.levels (comma-separated)
-#      CONFIG_LOG_FILTER_KEYWORDS        → .consoleLogFilter.keywords (comma-separated)
+#      CONFIG_LOG_FILTER_LEVELS          → .consoleLogFilter.levels（逗号分隔）
+#      CONFIG_LOG_FILTER_KEYWORDS        → .consoleLogFilter.keywords（逗号分隔）
 #
-#    Webhooks:
+#    Webhook 推送：
 #      CONFIG_DISCORD_ENABLED / CONFIG_DISCORD_URL
 #      CONFIG_NTFY_ENABLED / CONFIG_NTFY_URL / CONFIG_NTFY_TOPIC / CONFIG_NTFY_TOKEN
 #      CONFIG_NTFY_TITLE / CONFIG_NTFY_PRIORITY
-#      CONFIG_NTFY_TAGS                  → comma-separated e.g. "bot,notify"
+#      CONFIG_NTFY_TAGS                  → 逗号分隔，如 "bot,notify"
 #
-#    Webhook log filter:
+#    Webhook 日志过滤：
 #      CONFIG_WEBHOOK_LOG_FILTER_ENABLED  → .webhook.webhookLogFilter.enabled
 #      CONFIG_WEBHOOK_LOG_FILTER_MODE     → .webhook.webhookLogFilter.mode
-#      CONFIG_WEBHOOK_LOG_FILTER_LEVELS   → comma-separated
-#      CONFIG_WEBHOOK_LOG_FILTER_KEYWORDS → comma-separated
+#      CONFIG_WEBHOOK_LOG_FILTER_LEVELS   → 逗号分隔
+#      CONFIG_WEBHOOK_LOG_FILTER_KEYWORDS → 逗号分隔
 #
 # ─────────────────────────────────────────────────────────────────────────────
 CONFIG_FILE="$CONFIG_DIR/config.json"
 CONFIG_EXAMPLE="$SCRIPT_DIR/src/config.example.json"
 
-# Returns 0 if config.json exists and is a valid JSON object
+# 检查 config.json 是否存在且为合法的 JSON 对象，是则返回 0
 _config_file_is_valid() {
   [ -f "$CONFIG_FILE" ] && \
   [ "$(wc -c < "$CONFIG_FILE")" -gt 10 ] && \
   jq -e 'type == "object"' "$CONFIG_FILE" > /dev/null 2>&1
 }
 
-# Returns object key-paths present in example but missing from config.
+# 返回示例文件中有但当前 config.json 中缺失的键路径
 _find_new_keys() {
   local config_keys example_keys
   local jq_expr='[path(..)] | map(select(all(. ; type == "string")) | join(".")) | sort[]'
@@ -199,43 +198,42 @@ _find_new_keys() {
 }
 
 if ! [ -f "$CONFIG_EXAMPLE" ]; then
-  echo "ERROR: config.example.json not found at $CONFIG_EXAMPLE — image may be corrupt." >&2
+  echo "错误: 在 $CONFIG_EXAMPLE 找不到 config.example.json — 镜像可能已损坏。" >&2
   exit 1
 fi
 
 if _config_file_is_valid; then
-  echo "[entrypoint] Using existing config.json."
+  echo "[entrypoint] 检测到已有 config.json，直接使用。"
   new_keys=$(_find_new_keys)
   if [ -n "$new_keys" ]; then
     echo "" >&2
     echo "┌─────────────────────────────────────────────────────────┐" >&2
-    echo "│  ⚠  CONFIG UPDATE AVAILABLE                             │" >&2
+    echo "│  ⚠  配置文件需要更新                                    │" >&2
     echo "│                                                         │" >&2
-    echo "│  Your config.json is missing keys added in a recent     │" >&2
-    echo "│  update. The script will still run, but new features    │" >&2
-    echo "│  may not work correctly.                                │" >&2
+    echo "│  您的 config.json 缺少近期更新中新增的配置项。          │" >&2
+    echo "│  脚本仍可运行，但新功能可能无法正常工作。               │" >&2
     echo "│                                                         │" >&2
-    echo "│  Missing keys (see config.example.json for defaults):   │" >&2
+    echo "│  缺失的配置项（默认值请参考 config.example.json）：     │" >&2
     echo "$new_keys" | while IFS= read -r key; do
       printf "│    %-55s│\n" "+ $key" >&2
     done
     echo "│                                                         │" >&2
-    echo "│  To fix: delete ./config/config.json and restart —      │" >&2
-    echo "│  it will be regenerated with all current defaults,      │" >&2
-    echo "│  then re-apply your CONFIG_* env vars.                  │" >&2
+    echo "│  修复方法：删除 ./config/config.json 并重启容器 —       │" >&2
+    echo "│  系统将使用最新默认值重新生成，然后重新应用             │" >&2
+    echo "│  CONFIG_* 环境变量即可。                                │" >&2
     echo "└─────────────────────────────────────────────────────────┘" >&2
     echo "" >&2
   fi
 else
-  echo "[entrypoint] No config.json found — generating from config.example.json."
+  echo "[entrypoint] 未找到 config.json — 正在从 config.example.json 生成。"
   cp "$CONFIG_EXAMPLE" "$CONFIG_FILE"
-  echo "[entrypoint] config.json created. Customise via CONFIG_* env vars in compose.yaml."
+  echo "[entrypoint] config.json 已创建，可通过 compose.yaml 中的 CONFIG_* 环境变量自定义配置。"
 fi
 
-# Apply CONFIG_* env var overrides (always runs, regardless of config source)
-echo "[entrypoint] Applying CONFIG_* environment variable overrides..."
+# 应用 CONFIG_* 环境变量覆盖（每次启动时执行，与配置来源无关）
+echo "[entrypoint] 正在应用 CONFIG_* 环境变量覆盖..."
 _cfg() {
-  # _cfg <env_var_value_or_empty> <jq_path> <type: string|bool|number>
+  # _cfg <环境变量值或空> <jq路径> <类型: string|bool|number>
   local val="$1" path="$2" type="${3:-string}"
   [ -z "$val" ] && return 0
   case "$type" in
@@ -249,16 +247,16 @@ _cfg() {
   echo "[entrypoint]   $path = $val"
 }
 
-# headless is always forced true — cannot run headed inside Docker
+# headless 始终强制为 true — Docker 容器内不支持有界面模式
 _cfg 'true'                            '.headless'                                  bool
 
-# Top-level
+# 顶层配置
 _cfg "${CONFIG_CLUSTERS:-}"            '.clusters'                                  number
 _cfg "${CONFIG_DEBUG_LOGS:-}"          '.debugLogs'                                 bool
 _cfg "${CONFIG_ERROR_DIAGNOSTICS:-}"   '.errorDiagnostics'                          bool
 _cfg "${CONFIG_GLOBAL_TIMEOUT:-}"      '.globalTimeout'                             string
 
-# Workers
+# 任务开关
 _cfg "${CONFIG_WORKER_DAILY_SET:-}"           '.workers.doDailySet'           bool
 _cfg "${CONFIG_WORKER_SPECIAL_PROMOTIONS:-}"  '.workers.doSpecialPromotions'   bool
 _cfg "${CONFIG_WORKER_MORE_PROMOTIONS:-}"     '.workers.doMorePromotions'      bool
@@ -269,7 +267,7 @@ _cfg "${CONFIG_WORKER_MOBILE_SEARCH:-}"       '.workers.doMobileSearch'        b
 _cfg "${CONFIG_WORKER_DAILY_CHECKIN:-}"       '.workers.doDailyCheckIn'        bool
 _cfg "${CONFIG_WORKER_READ_TO_EARN:-}"        '.workers.doReadToEarn'          bool
 
-# Search settings
+# 搜索设置
 _cfg "${CONFIG_SEARCH_SCROLL_RANDOM:-}"    '.searchSettings.scrollRandomResults'    bool
 _cfg "${CONFIG_SEARCH_CLICK_RANDOM:-}"     '.searchSettings.clickRandomResults'     bool
 _cfg "${CONFIG_SEARCH_PARALLEL:-}"         '.searchSettings.parallelSearching'      bool
@@ -280,17 +278,17 @@ _cfg "${CONFIG_SEARCH_READ_DELAY_MAX:-}"   '.searchSettings.readDelay.max'      
 _cfg "${CONFIG_SEARCH_VISIT_TIME:-}"       '.searchSettings.searchResultVisitTime'  string
 _cfg "${CONFIG_SEARCH_ON_BING_LOCAL:-}"    '.searchOnBingLocalQueries'              bool
 
-# Proxy
+# 代理设置
 _cfg "${CONFIG_PROXY_QUERY_ENGINE:-}"  '.proxy.queryEngine'  bool
 
-# Console log filter
-# Levels and keywords accept comma-separated values e.g. "error,warn"
+# 控制台日志过滤
+# levels 和 keywords 支持逗号分隔的多个值，如 "error,warn"
 _cfg "${CONFIG_LOG_FILTER_ENABLED:-}"   '.consoleLogFilter.enabled'  bool
 _cfg "${CONFIG_LOG_FILTER_MODE:-}"      '.consoleLogFilter.mode'     string
 _cfg_array() {
-  # _cfg_array <value-or-unset-sentinel> <jq_path>
-  # Uses __UNSET__ sentinel to distinguish "var not set" from "var set to empty".
-  # An empty value writes [] to the config; an unset var is skipped entirely.
+  # _cfg_array <值或未设置标记> <jq路径>
+  # 使用 __UNSET__ 哨兵值区分「变量未设置」和「变量设为空」。
+  # 空值写入 []；未设置的变量则跳过。
   local val="$1" path="$2"
   [ "$val" = "__UNSET__" ] && return 0
   local json_array
@@ -305,11 +303,11 @@ _cfg_array() {
 _cfg_array "${CONFIG_LOG_FILTER_LEVELS-__UNSET__}"    '.consoleLogFilter.levels'
 _cfg_array "${CONFIG_LOG_FILTER_KEYWORDS-__UNSET__}"  '.consoleLogFilter.keywords'
 
-# Discord webhook
+# Discord 推送
 _cfg "${CONFIG_DISCORD_ENABLED:-}"  '.webhook.discord.enabled'  bool
 _cfg "${CONFIG_DISCORD_URL:-}"      '.webhook.discord.url'      string
 
-# ntfy webhook
+# ntfy 推送
 _cfg "${CONFIG_NTFY_ENABLED:-}"   '.webhook.ntfy.enabled'   bool
 _cfg "${CONFIG_NTFY_URL:-}"       '.webhook.ntfy.url'       string
 _cfg "${CONFIG_NTFY_TOPIC:-}"     '.webhook.ntfy.topic'     string
@@ -318,23 +316,23 @@ _cfg "${CONFIG_NTFY_TITLE:-}"     '.webhook.ntfy.title'     string
 _cfg "${CONFIG_NTFY_PRIORITY:-}"  '.webhook.ntfy.priority'  number
 _cfg_array "${CONFIG_NTFY_TAGS-__UNSET__}"  '.webhook.ntfy.tags'
 
-# pushplus webhook
+# PushPlus 微信推送
 _cfg "${CONFIG_PUSHPLUS_ENABLED:-}"   '.webhook.pushplus.enabled'   bool
 _cfg "${CONFIG_PUSHPLUS_TOKEN:-}"     '.webhook.pushplus.token'     string
 _cfg "${CONFIG_PUSHPLUS_TITLE:-}"     '.webhook.pushplus.title'     string
 _cfg "${CONFIG_PUSHPLUS_TEMPLATE:-}"  '.webhook.pushplus.template'  string
 _cfg "${CONFIG_PUSHPLUS_CHANNEL:-}"   '.webhook.pushplus.channel'   string
 
-# Webhook log filter
+# Webhook 日志过滤
 _cfg "${CONFIG_WEBHOOK_LOG_FILTER_ENABLED:-}"  '.webhook.webhookLogFilter.enabled'  bool
 _cfg "${CONFIG_WEBHOOK_LOG_FILTER_MODE:-}"     '.webhook.webhookLogFilter.mode'     string
 _cfg_array "${CONFIG_WEBHOOK_LOG_FILTER_LEVELS-__UNSET__}"    '.webhook.webhookLogFilter.levels'
 _cfg_array "${CONFIG_WEBHOOK_LOG_FILTER_KEYWORDS-__UNSET__}"  '.webhook.webhookLogFilter.keywords'
 
-echo "[entrypoint] Config ready."
+echo "[entrypoint] 配置就绪。"
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 5. Initial run without sleep if RUN_ON_START=true
+# 5. 若设置 RUN_ON_START=true，则立即执行一次（跳过随机等待）
 # ─────────────────────────────────────────────────────────────────────────────
 if [ "${RUN_ON_START:-false}" = "true" ]; then
   echo "[entrypoint] 在 $(date) 开始后台初始运行"
@@ -350,37 +348,22 @@ if [ "${RUN_ON_START:-false}" = "true" ]; then
   echo "[entrypoint] 后台进程已启动 (PID: $!)"
 fi
 
-# 设置 cron 任务
-if [ -f "/etc/cron.d/microsoft-rewards-cron.template" ]; then
-    # 替换模板中的占位符
-    CRON_SCHEDULE_ESCAPED=$(echo "$CRON_SCHEDULE" | sed 's/\*/\\*/g')
-    echo "DEBUG: CRON_SCHEDULE_ESCAPED=$CRON_SCHEDULE_ESCAPED"
-    echo "DEBUG: TZ=$TZ"
-    echo "DEBUG: Before sed - template content:"
-    cat /etc/cron.d/microsoft-rewards-cron.template
-    sed -i "s|\${CRON_SCHEDULE}|$CRON_SCHEDULE_ESCAPED|g" /etc/cron.d/microsoft-rewards-cron.template || true
-    sed -i "s|\${TZ}|$TZ|g" /etc/cron.d/microsoft-rewards-cron.template || true
-    echo "DEBUG: After sed - template content:"
-    cat /etc/cron.d/microsoft-rewards-cron.template
-
-    # 启用 cron 任务
-    cp /etc/cron.d/microsoft-rewards-cron.template /etc/cron.d/microsoft-rewards-cron
-    chmod 0644 /etc/cron.d/microsoft-rewards-cron
-
-    # 启动 cron 服务
-    echo "正在启动 cron 服务..."
-    service cron start
-
-    # 检查 cron 服务状态
-    if service cron status; then
-        echo "Cron 服务启动成功"
-    else
-        echo "警告: Cron 服务启动失败"
-    fi
-else
-    echo "警告: 在 /etc/cron.d/microsoft-rewards-cron.template 找不到 Cron 模板"
+# ─────────────────────────────────────────────────────────────────────────────
+# 6. 配置并注册 cron 定时任务
+# ─────────────────────────────────────────────────────────────────────────────
+if [ ! -f /etc/cron.d/microsoft-rewards-cron.template ]; then
+  echo "错误: 找不到 cron 模板文件 /etc/cron.d/microsoft-rewards-cron.template" >&2
+  exit 1
 fi
 
-# 启动应用
-echo "正在启动 Microsoft Rewards 脚本..."
-exec "$@"
+export TZ
+envsubst < /etc/cron.d/microsoft-rewards-cron.template > /etc/cron.d/microsoft-rewards-cron
+chmod 0644 /etc/cron.d/microsoft-rewards-cron
+crontab /etc/cron.d/microsoft-rewards-cron
+
+echo "[entrypoint] 定时任务已配置 | 计划: $CRON_SCHEDULE | 时区: $TZ | 启动时间: $(date)"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 7. 在前台启动 cron（作为容器主进程 PID 1）
+# ─────────────────────────────────────────────────────────────────────────────
+exec cron -f
