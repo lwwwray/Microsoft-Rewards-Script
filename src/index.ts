@@ -24,6 +24,7 @@ import AxiosClient from './util/Axios'
 import { sendDiscord, flushDiscordQueue } from './logging/Discord'
 import { sendNtfy, flushNtfyQueue } from './logging/Ntfy'
 import { sendPushPlus, flushPushPlusQueue } from './logging/PushPlus'
+import { sendServerChan, flushServerChanQueue } from './logging/ServerChan'
 import type { DashboardData } from './interface/DashboardData'
 import type { AppDashboardData } from './interface/AppDashBoardData'
 import { PanelFlyoutData } from './interface/PanelFlyoutData'
@@ -58,7 +59,7 @@ export function getCurrentContext(): ExecutionContext {
 }
 
 async function flushAllWebhooks(timeoutMs = 5000): Promise<void> {
-    await Promise.allSettled([flushDiscordQueue(timeoutMs), flushNtfyQueue(timeoutMs), flushPushPlusQueue(timeoutMs)])
+    await Promise.allSettled([flushDiscordQueue(timeoutMs), flushNtfyQueue(timeoutMs), flushPushPlusQueue(timeoutMs), flushServerChanQueue(timeoutMs)])
 }
 
 interface UserData {
@@ -174,6 +175,20 @@ export class MicrosoftRewardsBot {
         await sendPushPlus(pushplus, content)
     }
 
+    private async sendServerChanSummary(
+        accountStats: AccountStats[],
+        runStartTime: number,
+        hadWorkerFailure: boolean
+    ): Promise<void> {
+        const serverchan = this.config?.webhook?.serverchan
+        if (!serverchan?.enabled || !serverchan.sendkey) {
+            return
+        }
+
+        const content = this.buildSummaryMessage(accountStats, runStartTime, hadWorkerFailure)
+        await sendServerChan(serverchan, content)
+    }
+
     // 获取当前是否为移动端的上下文
     get isMobile(): boolean {
         return getCurrentContext().isMobile
@@ -286,6 +301,7 @@ export class MicrosoftRewardsBot {
                 )
 
                 await this.sendPushPlusSummary(allAccountStats, runStartTime, hadWorkerFailure)
+                await this.sendServerChanSummary(allAccountStats, runStartTime, hadWorkerFailure)
                 await flushAllWebhooks()
 
                 process.exit(hadWorkerFailure ? 1 : 0)
@@ -430,6 +446,7 @@ export class MicrosoftRewardsBot {
 
             const hadWorkerFailure = accountStats.some(s => !s.success)
             await this.sendPushPlusSummary(accountStats, runStartTime, hadWorkerFailure)
+            await this.sendServerChanSummary(accountStats, runStartTime, hadWorkerFailure)
             await flushAllWebhooks()
             process.exit(0)
         }

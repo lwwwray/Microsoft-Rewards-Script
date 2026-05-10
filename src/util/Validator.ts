@@ -50,6 +50,14 @@ const WebhookSchema = z.object({
             channel: z.string().optional()
         })
         .optional(),
+    serverchan: z
+        .object({
+            enabled: z.boolean().optional(),
+            sendkey: z.string(),
+            title: z.string().optional(),
+            short: z.string().optional()
+        })
+        .optional(),
     webhookLogFilter: LogFilterSchema
 })
 

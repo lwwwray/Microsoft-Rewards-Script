@@ -64,6 +64,12 @@
             "title": "Microsoft-Rewards-Script",
             "template": "txt"
         },
+        "serverchan": {
+            "enabled": false,
+            "sendkey": "",
+            "title": "Microsoft Rewards 通知",
+            "short": ""
+        },
         "webhookLogFilter": {
             "enabled": false,
             "mode": "whitelist",

@@ -323,6 +323,12 @@ _cfg "${CONFIG_PUSHPLUS_TITLE:-}"     '.webhook.pushplus.title'     string
 _cfg "${CONFIG_PUSHPLUS_TEMPLATE:-}"  '.webhook.pushplus.template'  string
 _cfg "${CONFIG_PUSHPLUS_CHANNEL:-}"   '.webhook.pushplus.channel'   string
 
+# Server酱推送
+_cfg "${CONFIG_SERVERCHAN_ENABLED:-}"  '.webhook.serverchan.enabled'  bool
+_cfg "${CONFIG_SERVERCHAN_SENDKEY:-}"  '.webhook.serverchan.sendkey'  string
+_cfg "${CONFIG_SERVERCHAN_TITLE:-}"    '.webhook.serverchan.title'    string
+_cfg "${CONFIG_SERVERCHAN_SHORT:-}"    '.webhook.serverchan.short'    string
+
 # Webhook 日志过滤
 _cfg "${CONFIG_WEBHOOK_LOG_FILTER_ENABLED:-}"  '.webhook.webhookLogFilter.enabled'  bool
 _cfg "${CONFIG_WEBHOOK_LOG_FILTER_MODE:-}"     '.webhook.webhookLogFilter.mode'     string

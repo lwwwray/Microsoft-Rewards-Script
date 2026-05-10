@@ -52,6 +52,7 @@ export interface ConfigWebhook {
     discord?: WebhookDiscordConfig
     ntfy?: WebhookNtfyConfig
     pushplus?: WebhookPushPlusConfig
+    serverchan?: WebhookServerChanConfig
     webhookLogFilter: LogFilter
 }
 
@@ -84,4 +85,11 @@ export interface WebhookPushPlusConfig {
     title?: string
     template?: 'txt' | 'html' | 'markdown'
     channel?: string
+}
+
+export interface WebhookServerChanConfig {
+    enabled?: boolean
+    sendkey: string
+    title?: string
+    short?: string
 }
