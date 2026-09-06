@@ -51,8 +51,9 @@ jobs:
                   push: true
                   # 同时构建 amd64（x86服务器）和 arm64（树莓派/部分NAS）
                   platforms: linux/amd64,linux/arm64
+                  # v3 分支用独立标签 :v3，latest 保留给 v4（v4-serverchan 的 workflow），避免互相覆盖
                   tags: |
-                      ${{ env.REGISTRY }}/${{ steps.image.outputs.name }}:latest
+                      ${{ env.REGISTRY }}/${{ steps.image.outputs.name }}:v3
                       ${{ env.REGISTRY }}/${{ steps.image.outputs.name }}:${{ github.sha }}
                   # 利用 GitHub Actions 缓存加速构建
                   cache-from: type=gha
