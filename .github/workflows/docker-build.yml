@@ -58,25 +58,3 @@ jobs:
                   # 利用 GitHub Actions 缓存加速构建
                   cache-from: type=gha
                   cache-to: type=gha,mode=max
-
-            # ghcr 包默认私有，NAS 上无鉴权 docker pull 会失败；推送成功后把包设为 public。
-            # 推送后包注册可能有延迟，失败重试。
-            - name: Make package public (for NAS pull without auth)
-              run: |
-                  PACKAGE="microsoft-rewards-script"
-                  for i in $(seq 1 10); do
-                      STATUS=$(curl -s -o /tmp/ghcr-vis.json -w "%{http_code}" -X PATCH \
-                          -H "Authorization: Bearer $GITHUB_TOKEN" \
-                          -H "Accept: application/vnd.github+json" \
-                          -H "X-GitHub-Api-Version: 2022-11-28" \
-                          "https://api.github.com/user/packages/container/${PACKAGE}" \
-                          -d '{"visibility":"public"}')
-                      if [ "$STATUS" = "200" ] || [ "$STATUS" = "204" ]; then
-                          echo "ghcr 包已设为 public: ${PACKAGE}"
-                          exit 0
-                      fi
-                      echo "第 ${i} 次尝试失败 (HTTP ${STATUS})，5 秒后重试..."
-                      sleep 5
-                  done
-                  cat /tmp/ghcr-vis.json 2>/dev/null || true
-                  exit 1
