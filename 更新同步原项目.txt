@@ -1,18 +1,30 @@
-# 同步上游 chiihero/Microsoft-Rewards-Script
+# 日常开发 + 同步上游（fork 工作流）
 
-上游 remote：
-    git remote add upstream https://github.com/chiihero/Microsoft-Rewards-Script.git
+## 布局
+- origin   = 自己的 fork（https://github.com/lwwwray/Microsoft-Rewards-Script）
+- upstream = 作者 chiihero 的仓库（同步来源）
+- main          = v3 线，跟踪 origin/main
+- v4-serverchan = v4 线，跟踪 origin/v4-serverchan
 
-上游两条线：
-- main      = v3 线（本仓库 main 与它保持同步，含 Server酱 定制）
-- V4-china  = v4 线（本地对应分支 v4-serverchan，含 Server酱 移植）
+## 日常开发（改代码 → 推送自己的 fork）
+    git add -A
+    git commit -m "说明"
+    git push          # 跟踪已配好，无参数即推自己的 fork（origin）
 
-同步 v3（main 分支上执行）：
+## 拉取作者的同步
+v3（main 分支上执行）：
     git fetch upstream
     git merge upstream/main
-    # 冲突解决后：git commit
+    # 若有冲突：解决后 git add -A && git commit
 
-同步 v4（v4-serverchan 分支上执行）：
+v4（v4-serverchan 分支上执行）：
     git fetch upstream
     git merge upstream/V4-china
-    # 冲突解决后：git commit
+    # 若有冲突：解决后 git add -A && git commit
+
+同步完再 git push 即可把合并结果推回自己的 fork。
+
+## 常用查看命令
+    git branch -vv        # 每个分支的跟踪关系/领先落后
+    git status            # 当前分支状态
+    git remote -v         # 已配置的远程
