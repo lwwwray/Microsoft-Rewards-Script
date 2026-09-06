@@ -1,2 +1,18 @@
-git fetch upstream
-git merge upstream/v3 --allow-unrelated-histories
+# 同步上游 chiihero/Microsoft-Rewards-Script
+
+上游 remote：
+    git remote add upstream https://github.com/chiihero/Microsoft-Rewards-Script.git
+
+上游两条线：
+- main      = v3 线（本仓库 main 与它保持同步，含 Server酱 定制）
+- V4-china  = v4 线（本地对应分支 v4-serverchan，含 Server酱 移植）
+
+同步 v3（main 分支上执行）：
+    git fetch upstream
+    git merge upstream/main
+    # 冲突解决后：git commit
+
+同步 v4（v4-serverchan 分支上执行）：
+    git fetch upstream
+    git merge upstream/V4-china
+    # 冲突解决后：git commit
