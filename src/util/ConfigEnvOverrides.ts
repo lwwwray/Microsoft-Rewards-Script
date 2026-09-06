@@ -87,6 +87,12 @@ export const ENV_OVERRIDES: EnvOverrideEntry[] = [
     { env: 'CONFIG_PUSHPLUS_TEMPLATE', path: 'webhook.pushplus.template', type: 'string' },
     { env: 'CONFIG_PUSHPLUS_CHANNEL', path: 'webhook.pushplus.channel', type: 'string' },
 
+    // ServerChan webhook（Server酱 微信推送）
+    { env: 'CONFIG_SERVERCHAN_ENABLED', path: 'webhook.serverchan.enabled', type: 'bool' },
+    { env: 'CONFIG_SERVERCHAN_SENDKEY', path: 'webhook.serverchan.sendkey', type: 'string' },
+    { env: 'CONFIG_SERVERCHAN_TITLE', path: 'webhook.serverchan.title', type: 'string' },
+    { env: 'CONFIG_SERVERCHAN_SHORT', path: 'webhook.serverchan.short', type: 'string' },
+
     // ClawBot webhook（微信 ClawBot 直连推送，凭证由扫码生成）
     { env: 'CONFIG_CLAWBOT_ENABLED', path: 'webhook.clawbot.enabled', type: 'bool' },
     { env: 'CONFIG_CLAWBOT_AUTHFILE', path: 'webhook.clawbot.authFile', type: 'string' },

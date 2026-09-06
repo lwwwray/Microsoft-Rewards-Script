@@ -90,6 +90,12 @@
             "template": "txt",
             "channel": ""
         },
+        "serverchan": {
+            "enabled": false,
+            "sendkey": "",
+            "title": "Microsoft-Rewards-Script",
+            "short": ""
+        },
         "clawbot": {
             "enabled": false,
             "authFile": ""

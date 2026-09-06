@@ -29,6 +29,7 @@ import { sendDiscord, flushDiscordQueue } from './logging/Discord'
 import { sendNtfy, flushNtfyQueue } from './logging/Ntfy'
 import { sendTelegram, flushTelegramQueue } from './logging/Telegram'
 import { sendPushPlus, flushPushPlusQueue } from './logging/PushPlus'
+import { sendServerChan, flushServerChanQueue } from './logging/ServerChan'
 import { sendClawBot, flushClawBotQueue, ensureClawBotReady } from './logging/ClawBot'
 import type { DashboardData } from './interface/DashboardData'
 import type { AppDashboardData } from './interface/AppDashBoardData'
@@ -76,6 +77,7 @@ async function flushAllWebhooks(timeoutMs = 5000): Promise<void> {
         flushNtfyQueue(timeoutMs),
         flushTelegramQueue(timeoutMs),
         flushPushPlusQueue(timeoutMs),
+        flushServerChanQueue(timeoutMs),
         flushClawBotQueue(timeoutMs)
     ])
     closeSessionStore()
@@ -373,6 +375,7 @@ export class MicrosoftRewardsBot {
 
                 await this.sendPushPlusSummary(allAccountStats, runStartTime, hadWorkerFailure)
                 await this.sendClawBotSummary(allAccountStats, runStartTime, hadWorkerFailure)
+                await this.sendServerChanSummary(allAccountStats, runStartTime, hadWorkerFailure)
                 await flushAllWebhooks()
 
                 process.exit(hadWorkerFailure ? 1 : 0)
@@ -479,6 +482,70 @@ export class MicrosoftRewardsBot {
 
         const content = this.buildSummaryMessage(accountStats, runStartTime, hadWorkerFailure)
         await sendClawBot(clawbot, content)
+    }
+
+    private buildServerChanMarkdown(
+        accountStats: AccountStats[],
+        runStartTime: number,
+        hadWorkerFailure: boolean
+    ): string {
+        const totalCollectedPoints = accountStats.reduce((sum, s) => sum + s.collectedPoints, 0)
+        const totalInitialPoints = accountStats.reduce((sum, s) => sum + s.initialPoints, 0)
+        const totalFinalPoints = accountStats.reduce((sum, s) => sum + s.finalPoints, 0)
+        const totalDurationMinutes = ((Date.now() - runStartTime) / 1000 / 60).toFixed(1)
+        const timestamp = formatLocalTimestamp(new Date())
+        const statusText = hadWorkerFailure ? '❌ 异常' : '✅ 完成'
+
+        const sections: string[] = [
+            `**时间：** ${timestamp}`,
+            `**状态：** ${statusText}`,
+            `**账户数：** ${accountStats.length}`,
+            `**总收集：** +${totalCollectedPoints} 分`,
+            `**积分变化：** ${totalInitialPoints} → ${totalFinalPoints}`,
+            `**运行时长：** ${totalDurationMinutes} 分钟`,
+            '',
+            '---',
+            '',
+            '**账户明细**'
+        ]
+
+        for (const stat of accountStats) {
+            const status = stat.success ? '✅ 成功' : '❌ 失败'
+            const duration = Number.isFinite(stat.duration) ? stat.duration.toFixed(1) : String(stat.duration)
+            const errorLine = stat.error ? `\n> ⚠️ ${stat.error}` : ''
+            sections.push('')
+            sections.push(`**${stat.email}**`)
+            sections.push(
+                `收集 +${stat.collectedPoints} 分 ｜ ${stat.initialPoints} → ${stat.finalPoints} ｜ 耗时 ${duration} 秒 ｜ ${status}${errorLine}`
+            )
+        }
+
+        // Server酱 Markdown：段落间用 \n\n 换行
+        return sections.join('\n\n')
+    }
+
+    private async sendServerChanSummary(
+        accountStats: AccountStats[],
+        runStartTime: number,
+        hadWorkerFailure: boolean
+    ): Promise<void> {
+        const serverchan = this.config?.webhook?.serverchan
+        if (!serverchan?.enabled || !serverchan.sendkey) {
+            return
+        }
+
+        const totalCollectedPoints = accountStats.reduce((sum, s) => sum + s.collectedPoints, 0)
+        const statusEmoji = hadWorkerFailure ? '❌' : '✅'
+        const baseTitle = serverchan.title ?? 'Microsoft Rewards 通知'
+        const suffix = ` +${totalCollectedPoints}分`
+        // Server酱 title 最长 32 字符，能放下就加积分后缀
+        const dynamicTitle = (`${statusEmoji} ${baseTitle}${suffix}`.length <= 32
+            ? `${statusEmoji} ${baseTitle}${suffix}`
+            : `${statusEmoji} ${baseTitle}`
+        ).slice(0, 32)
+
+        const content = this.buildServerChanMarkdown(accountStats, runStartTime, hadWorkerFailure)
+        await sendServerChan(serverchan, content, dynamicTitle)
     }
 
     private async runTasks(accounts: Account[], runStartTime: number): Promise<AccountStats[]> {
@@ -611,6 +678,7 @@ export class MicrosoftRewardsBot {
             const hadFailure = accountStats.some(s => !s.success)
             await this.sendPushPlusSummary(accountStats, runStartTime, hadFailure)
             await this.sendClawBotSummary(accountStats, runStartTime, hadFailure)
+            await this.sendServerChanSummary(accountStats, runStartTime, hadFailure)
             await flushAllWebhooks()
             process.exit(0)
         }
