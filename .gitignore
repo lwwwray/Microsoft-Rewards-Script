@@ -3,6 +3,7 @@ dist/
 .dev/
 node_modules/
 src/accounts.json
+/config/
 src/config.json
 /.vscode
 /diagnostics
@@ -27,3 +28,5 @@ logs/
 .stfolder/
 .env
 Microsoft-Rewards-Script.rar
+/.omo
+/.agents

@@ -4,6 +4,7 @@ export interface Config {
     headless: boolean
     clusters: number
     errorDiagnostics: boolean
+    ensureStreakProtection: boolean
     workers: ConfigWorkers
     searchOnBingLocalQueries: boolean
     globalTimeout: number | string
@@ -24,6 +25,13 @@ export interface ConfigSearchSettings {
     searchResultVisitTime: number | string
     searchDelay: ConfigDelay
     readDelay: ConfigDelay
+    /**
+     * 中国热搜源（gmya.net）配置。
+     * appkey 留空走免费档（有频率限制）；填入则带 appkey 请求以解除限流。
+     */
+    chinaApi?: {
+        appkey?: string
+    }
 }
 
 export interface ConfigDelay {
@@ -39,6 +47,7 @@ export interface ConfigWorkers {
     doDailySet: boolean
     doSpecialPromotions: boolean
     doMorePromotions: boolean
+    doClaimBonusPoints: boolean
     doPunchCards: boolean
     doAppPromotions: boolean
     doDesktopSearch: boolean

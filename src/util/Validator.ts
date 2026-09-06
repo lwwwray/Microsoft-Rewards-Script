@@ -68,10 +68,12 @@ export const ConfigSchema = z.object({
     headless: z.boolean(),
     clusters: z.number().int().nonnegative(),
     errorDiagnostics: z.boolean(),
+    ensureStreakProtection: z.boolean(),
     workers: z.object({
         doDailySet: z.boolean(),
         doSpecialPromotions: z.boolean(),
         doMorePromotions: z.boolean(),
+        doClaimBonusPoints: z.boolean(),
         doPunchCards: z.boolean(),
         doAppPromotions: z.boolean(),
         doDesktopSearch: z.boolean(),
@@ -88,7 +90,12 @@ export const ConfigSchema = z.object({
         queryEngines: z.array(QueryEngineSchema),
         searchResultVisitTime: NumberOrString,
         searchDelay: DelaySchema,
-        readDelay: DelaySchema
+        readDelay: DelaySchema,
+        chinaApi: z
+            .object({
+                appkey: z.string().optional()
+            })
+            .optional()
     }),
     debugLogs: z.boolean(),
     proxy: z.object({
@@ -119,12 +126,143 @@ export const AccountSchema = z.object({
     })
 })
 
+const defaultConfig: Config = {
+    baseURL: 'https://rewards.bing.com',
+    sessionPath: 'sessions',
+    headless: true,
+    clusters: 1,
+    errorDiagnostics: true,
+    ensureStreakProtection: true,
+    workers: {
+        doDailySet: true,
+        doSpecialPromotions: true,
+        doMorePromotions: true,
+        doClaimBonusPoints: true,
+        doPunchCards: true,
+        doAppPromotions: true,
+        doDesktopSearch: true,
+        doMobileSearch: true,
+        doDailyCheckIn: true,
+        doReadToEarn: true
+    },
+    searchOnBingLocalQueries: false,
+    globalTimeout: '30sec',
+    searchSettings: {
+        scrollRandomResults: true,
+        clickRandomResults: true,
+        parallelSearching: true,
+        queryEngines: ['google', 'wikipedia', 'reddit', 'local'],
+        searchResultVisitTime: '10sec',
+        searchDelay: { min: '30sec', max: '1min' },
+        readDelay: { min: '30sec', max: '1min' },
+        chinaApi: { appkey: '' }
+    },
+    debugLogs: false,
+    proxy: { queryEngine: true },
+    consoleLogFilter: {
+        enabled: false,
+        mode: 'whitelist',
+        levels: ['info', 'warn', 'error'],
+        keywords: [],
+        regexPatterns: []
+    },
+    webhook: {
+        webhookLogFilter: {
+            enabled: false,
+            mode: 'whitelist',
+            levels: ['warn', 'error'],
+            keywords: [],
+            regexPatterns: []
+        }
+    }
+}
+
+function isPlainObject(v: unknown): v is Record<string, unknown> {
+    return typeof v === 'object' && v !== null && !Array.isArray(v)
+}
+
+function getByPath(obj: unknown, path: ReadonlyArray<string | number>): unknown {
+    return path.reduce<unknown>((acc, key) => {
+        if (acc == null) return undefined
+        return (acc as Record<string | number, unknown>)[key]
+    }, obj)
+}
+
+function setByPath<T>(obj: T, path: ReadonlyArray<string | number>, value: unknown): T {
+    if (path.length === 0) return value as T
+    const head = path[0]
+    if (head === undefined) return value as T
+    const rest = path.slice(1)
+    const base = obj ?? (typeof head === 'number' ? [] : {})
+    const cloned: any = Array.isArray(base) ? [...base] : { ...(base as object) }
+    cloned[head] = setByPath((base as any)[head], rest, value)
+    return cloned
+}
+
+function fillMissing(data: unknown, defaults: unknown, path = ''): unknown {
+    if (!isPlainObject(defaults)) return data
+    if (!isPlainObject(data)) {
+        if (data === undefined) {
+            console.warn(`[Config] "${path || '<root>'}" 缺失，使用默认值`)
+            return defaults
+        }
+        return data
+    }
+    const result: Record<string, unknown> = { ...data }
+    for (const key of Object.keys(defaults)) {
+        const p = path ? `${path}.${key}` : key
+        if (!(key in result)) {
+            console.warn(`[Config] "${p}" 未找到，使用默认值: ${JSON.stringify(defaults[key])}`)
+            result[key] = defaults[key]
+        } else if (isPlainObject(defaults[key])) {
+            result[key] = fillMissing(result[key], defaults[key], p)
+        }
+    }
+    return result
+}
+
 export function validateConfig(data: unknown): Config {
-    return ConfigSchema.parse(data) as Config
+    const filled = fillMissing(data, defaultConfig)
+    let result = ConfigSchema.safeParse(filled)
+    if (result.success) return result.data as Config
+
+    let patched: unknown = filled
+    for (const issue of result.error.issues) {
+        const def = getByPath(defaultConfig, issue.path as (string | number)[])
+        console.warn(
+            `[Config] "${issue.path.join('.') || '<root>'}" 无效 (${issue.message})，使用默认值: ${JSON.stringify(def)}`
+        )
+        patched = setByPath(patched, issue.path as (string | number)[], def)
+    }
+    result = ConfigSchema.safeParse(patched)
+    if (!result.success) {
+        console.error('[Config] 应用默认值后仍然无效:', result.error.issues)
+        throw new Error('配置校验失败')
+    }
+    return result.data as Config
 }
 
 export function validateAccounts(data: unknown): Account[] {
-    return z.array(AccountSchema).parse(data)
+    const result = z.array(AccountSchema).safeParse(data)
+    if (result.success) return result.data
+
+    for (const issue of result.error.issues) {
+        const path = issue.path.join('.') || '<root>'
+        if (issue.code === 'invalid_type') {
+            if (issue.input === undefined) {
+                console.error(`[Accounts] "${path}" 缺失 (期望 ${issue.expected})`)
+            } else {
+                console.error(
+                    `[Accounts] "${path}" 类型错误: 期望 ${issue.expected}，实际 ${typeof issue.input}`
+                )
+            }
+        } else if (issue.code === 'invalid_union') {
+            console.error(`[Accounts] "${path}" 不匹配任何允许的类型: ${issue.message}`)
+        } else {
+            console.error(`[Accounts] "${path}" ${issue.message} (代码: ${issue.code})`)
+        }
+    }
+    throw new Error(`账户校验失败: ${result.error.issues.length} 个问题 — 请查看上方日志`)
 }
 
 export function checkNodeVersion(): void {

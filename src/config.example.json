@@ -2,11 +2,12 @@
     "baseURL": "https://rewards.bing.com",
     "sessionPath": "sessions",
     "headless": false,
-    "runOnZeroPoints": false,
     "clusters": 1,
     "errorDiagnostics": false,
+    "ensureStreakProtection": true,
     "workers": {
         "doDailySet": true,
+        "doClaimBonusPoints": true,
         "doSpecialPromotions": true,
         "doMorePromotions": true,
         "doPunchCards": true,
@@ -22,23 +23,34 @@
         "scrollRandomResults": true,
         "clickRandomResults": true,
         "parallelSearching": false,
-        "queryEngines": ["china", "local"],
+        "queryEngines": [
+            "china",
+            "local"
+        ],
         "searchResultVisitTime": "20sec",
         "searchDelay": {
-            "min": "5min",
-            "max": "9min"
+            "min": "6min",
+            "max": "12min"
         },
         "readDelay": {
             "min": "6min",
             "max": "11min"
+        },
+        "chinaApi": {
+            "appkey": ""
         }
     },
     "debugLogs": true,
     "consoleLogFilter": {
         "enabled": false,
         "mode": "whitelist",
-        "levels": ["error", "warn"],
-        "keywords": ["starting account"],
+        "levels": [
+            "error",
+            "warn"
+        ],
+        "keywords": [
+            "starting account"
+        ],
         "regexPatterns": []
     },
     "proxy": {
@@ -55,7 +67,10 @@
             "topic": "",
             "token": "",
             "title": "Microsoft-Rewards-Script",
-            "tags": ["bot", "notify"],
+            "tags": [
+                "bot",
+                "notify"
+            ],
             "priority": 3
         },
         "pushplus": {
@@ -73,8 +88,14 @@
         "webhookLogFilter": {
             "enabled": false,
             "mode": "whitelist",
-            "levels": ["error"],
-            "keywords": ["starting account", "select number", "collected"],
+            "levels": [
+                "error"
+            ],
+            "keywords": [
+                "starting account",
+                "select number",
+                "collected"
+            ],
             "regexPatterns": []
         }
     }

@@ -53,7 +53,7 @@ const executionContext = new AsyncLocalStorage<ExecutionContext>()
 export function getCurrentContext(): ExecutionContext {
     const context = executionContext.getStore()
     if (!context) {
-        return { isMobile: false, account: {} as any }
+        return { isMobile: false, account: {} as Account }
     }
     return context
 }
@@ -66,6 +66,7 @@ interface UserData {
     userName: string
     geoLocale: string
     langCode: string
+    timezoneOffset: string
     initialPoints: number
     currentPoints: number
     gainedPoints: number
@@ -92,6 +93,13 @@ export class MicrosoftRewardsBot {
     public cookies: { mobile: Cookie[]; desktop: Cookie[] } // 移动端和桌面端的cookies
     public fingerprint!: BrowserFingerprintWithHeaders // 浏览器指纹
 
+    // 新版 UI（modern dashboard）使用 Next.js Server Actions 而非 REST API。
+    // next-action hash 在编译时生成，绑定到具体部署版本（dpl）。
+    // 这里记录当前抓取到的部署 ID，用于在调用前做版本守卫。
+    public serverActions: {
+        deploymentId: string | null // 从 dashboard HTML 提取的 dpl（如 "20260612-3"）
+    } = { deploymentId: null }
+
     private pointsCanCollect = 0 // 可收集的积分
 
     private activeWorkers: number // 活跃的工作进程数
@@ -110,6 +118,7 @@ export class MicrosoftRewardsBot {
             userName: '', // 用户名
             geoLocale: 'CN', // 地理区域
             langCode: 'zh', // 语言代码
+            timezoneOffset: '480', // 时区偏移（分钟）
             initialPoints: 0, // 初始积分
             currentPoints: 0, // 当前积分
             gainedPoints: 0 // 已获得积分
@@ -407,6 +416,7 @@ export class MicrosoftRewardsBot {
             const accountStartTime = Date.now()
             const accountEmail = account.email
             this.userData.userName = this.utils.getEmailUsername(accountEmail)
+            this.userData.timezoneOffset = String(-new Date().getTimezoneOffset())
 
             try {
                 this.logger.info(
@@ -537,6 +547,17 @@ export class MicrosoftRewardsBot {
                 const data: DashboardData = await this.browser.func.getDashboardData()
                 const appData: AppDashboardData = await this.browser.func.getAppDashboardData()
                 this.panelData = await this.browser.func.getPanelFlyoutData()
+
+                // 新版 UI 用 Next.js Server Actions，提取部署 ID 用于请求头和日志对照。
+                // 版本号本身不再拦截调用（hash 通常不随部署变更）；仅提取不到 ID 时才跳过。
+                this.serverActions.deploymentId = await this.browser.func.extractDeploymentId(this.mainMobilePage)
+                if (this.serverActions.deploymentId) {
+                    this.logger.info(
+                        'main',
+                        'SERVER-ACTION',
+                        `新版仪表板部署 ID: ${this.serverActions.deploymentId} | hash 抓录版本(参考): ${BrowserFunc.SUPPORTED_DEPLOYMENT_ID}`
+                    )
+                }
                 // 设置地理位置
                 this.userData.geoLocale =
                     account.geoLocale === 'auto' ? data.userProfile.attributes.country : account.geoLocale.toLowerCase()
@@ -565,6 +586,11 @@ export class MicrosoftRewardsBot {
                     } | 应用: ${appEarnable?.totalEarnablePoints ?? 0} | ${accountEmail} | 区域设置: ${this.userData.geoLocale}`
                 )
 
+                // Ensure streak protection is true if enabled
+                if (this.config.ensureStreakProtection) {
+                    await this.activities.doStreakProtection()
+                }
+                if (this.config.workers.doClaimBonusPoints) await this.workers.doClaimBonusPoints(data)
                 if (this.config.workers.doAppPromotions) await this.workers.doAppPromotions(appData)
                 if (this.config.workers.doDailySet) await this.workers.doDailySet(data, this.mainMobilePage)
                 if (this.config.workers.doSpecialPromotions) await this.workers.doSpecialPromotions(data)

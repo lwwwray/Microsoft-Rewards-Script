@@ -132,10 +132,12 @@ fi
 #      CONFIG_CLUSTERS=2                 → .clusters（并发账户数）
 #      CONFIG_DEBUG_LOGS=true            → .debugLogs（调试日志）
 #      CONFIG_ERROR_DIAGNOSTICS=true     → .errorDiagnostics（错误诊断）
+#      CONFIG_ENSURE_STREAK_PROTECTION=true → .ensureStreakProtection（连击保护）
 #      CONFIG_GLOBAL_TIMEOUT=30sec       → .globalTimeout（全局超时）
 #
 #    任务开关（布尔值）：
 #      CONFIG_WORKER_DAILY_SET           → .workers.doDailySet（每日任务）
+#      CONFIG_WORKER_CLAIM_BONUS_POINTS  → .workers.doClaimBonusPoints（领取奖励积分）
 #      CONFIG_WORKER_SPECIAL_PROMOTIONS  → .workers.doSpecialPromotions（特殊活动）
 #      CONFIG_WORKER_MORE_PROMOTIONS     → .workers.doMorePromotions（更多推广）
 #      CONFIG_WORKER_PUNCH_CARDS         → .workers.doPunchCards（打卡任务）
@@ -248,16 +250,33 @@ _cfg() {
 }
 
 # headless 始终强制为 true — Docker 容器内不支持有界面模式
+_cfg_array() {
+  # _cfg_array <值或未设置标记> <jq路径>
+  # 使用 __UNSET__ 哨兵值区分「变量未设置」和「变量设为空」。
+  # 空值写入 []；未设置的变量则跳过。
+  local val="$1" path="$2"
+  [ "$val" = "__UNSET__" ] && return 0
+  local json_array
+  if [ -z "$val" ]; then
+    json_array="[]"
+  else
+    json_array=$(echo "$val" | jq -Rc '[split(",") | .[] | ltrimstr(" ") | rtrimstr(" ")]')
+  fi
+  jq --argjson v "$json_array" "$path = \$v" "$CONFIG_FILE" > "$CONFIG_FILE.tmp" && mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
+  echo "[entrypoint]   $path = [$val]"
+}
 _cfg 'true'                            '.headless'                                  bool
 
 # 顶层配置
 _cfg "${CONFIG_CLUSTERS:-}"            '.clusters'                                  number
 _cfg "${CONFIG_DEBUG_LOGS:-}"          '.debugLogs'                                 bool
 _cfg "${CONFIG_ERROR_DIAGNOSTICS:-}"   '.errorDiagnostics'                          bool
+_cfg "${CONFIG_ENSURE_STREAK_PROTECTION:-}"   '.ensureStreakProtection'                          bool
 _cfg "${CONFIG_GLOBAL_TIMEOUT:-}"      '.globalTimeout'                             string
 
 # 任务开关
 _cfg "${CONFIG_WORKER_DAILY_SET:-}"           '.workers.doDailySet'           bool
+_cfg "${CONFIG_WORKER_CLAIM_BONUS_POINTS:-}"  '.workers.doClaimBonusPoints'           bool
 _cfg "${CONFIG_WORKER_SPECIAL_PROMOTIONS:-}"  '.workers.doSpecialPromotions'   bool
 _cfg "${CONFIG_WORKER_MORE_PROMOTIONS:-}"     '.workers.doMorePromotions'      bool
 _cfg "${CONFIG_WORKER_PUNCH_CARDS:-}"         '.workers.doPunchCards'          bool
@@ -278,6 +297,12 @@ _cfg "${CONFIG_SEARCH_READ_DELAY_MAX:-}"   '.searchSettings.readDelay.max'      
 _cfg "${CONFIG_SEARCH_VISIT_TIME:-}"       '.searchSettings.searchResultVisitTime'  string
 _cfg "${CONFIG_SEARCH_ON_BING_LOCAL:-}"    '.searchOnBingLocalQueries'              bool
 
+# 查询源（国内核心特性）：queryEngines 决定热搜来源，chinaApi.appkey 解除 gmya.net 免费档限流。
+# 例：CONFIG_QUERY_ENGINES="china,local"（逗号分隔，按顺序尝试；可选 china/google/wikipedia/reddit/local）
+#     CONFIG_CHINA_API_APPKEY="你的gmya.net appkey"（留空走免费档，有频率限制）
+_cfg_array "${CONFIG_QUERY_ENGINES-__UNSET__}"  '.searchSettings.queryEngines'
+_cfg "${CONFIG_CHINA_API_APPKEY:-}"             '.searchSettings.chinaApi.appkey'  string
+
 # 代理设置
 _cfg "${CONFIG_PROXY_QUERY_ENGINE:-}"  '.proxy.queryEngine'  bool
 
@@ -285,21 +310,6 @@ _cfg "${CONFIG_PROXY_QUERY_ENGINE:-}"  '.proxy.queryEngine'  bool
 # levels 和 keywords 支持逗号分隔的多个值，如 "error,warn"
 _cfg "${CONFIG_LOG_FILTER_ENABLED:-}"   '.consoleLogFilter.enabled'  bool
 _cfg "${CONFIG_LOG_FILTER_MODE:-}"      '.consoleLogFilter.mode'     string
-_cfg_array() {
-  # _cfg_array <值或未设置标记> <jq路径>
-  # 使用 __UNSET__ 哨兵值区分「变量未设置」和「变量设为空」。
-  # 空值写入 []；未设置的变量则跳过。
-  local val="$1" path="$2"
-  [ "$val" = "__UNSET__" ] && return 0
-  local json_array
-  if [ -z "$val" ]; then
-    json_array="[]"
-  else
-    json_array=$(echo "$val" | jq -Rc '[split(",") | .[] | ltrimstr(" ") | rtrimstr(" ")]')
-  fi
-  jq --argjson v "$json_array" "$path = \$v" "$CONFIG_FILE" > "$CONFIG_FILE.tmp" && mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
-  echo "[entrypoint]   $path = [$val]"
-}
 _cfg_array "${CONFIG_LOG_FILTER_LEVELS-__UNSET__}"    '.consoleLogFilter.levels'
 _cfg_array "${CONFIG_LOG_FILTER_KEYWORDS-__UNSET__}"  '.consoleLogFilter.keywords'
 
@@ -371,5 +381,7 @@ echo "[entrypoint] 定时任务已配置 | 计划: $CRON_SCHEDULE | 时区: $TZ 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 7. 在前台启动 cron（作为容器主进程 PID 1）
+#    使用 exec "$@" 尊重 CMD 传入的参数（默认 "cron -f -l 2"），
+#    前台 cron 作为 PID 1 能正确接收容器 SIGTERM 信号。
 # ─────────────────────────────────────────────────────────────────────────────
-exec cron -f
+exec "$@"

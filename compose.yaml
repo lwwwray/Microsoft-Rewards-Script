@@ -1,5 +1,7 @@
 services:
     microsoft-rewards-script:
+        # 使用 GitHub Actions 构建的 CI 镜像（见 .github/workflows/docker-build.yml）；
+        # 更新代码后需重新触发 workflow，否则镜像仍是旧代码。
         image: ghcr.io/lwwwray/microsoft-rewards-script:latest
         container_name: microsoft-rewards-script
         restart: unless-stopped
@@ -44,6 +46,10 @@ services:
             #CONFIG_SEARCH_DELAY_MIN: '30sec'
             #CONFIG_SEARCH_DELAY_MAX: '1min'
             #
+            # 查询源（国内核心特性）：
+            #CONFIG_QUERY_ENGINES: 'china,local'  # 中国热搜(gmya.net) + 本地词兜底；国内推荐，无需代理
+            #CONFIG_CHINA_API_APPKEY: ''           # gmya.net appkey，填入解除免费档限流（留空走免费档）
+            #
             # Discord webhook:
             #CONFIG_DISCORD_ENABLED: 'true'
             #CONFIG_DISCORD_URL: 'https://discord.com/api/webhooks/...'
@@ -55,6 +61,13 @@ services:
             #CONFIG_NTFY_TOKEN: ''
             #CONFIG_NTFY_TITLE: 'Microsoft-Rewards-Script'
             #CONFIG_NTFY_PRIORITY: '3'
+            #
+            # PushPlus 推送（国内推荐，微信推送，无需翻墙）:
+            #CONFIG_PUSHPLUS_ENABLED: 'true'
+            #CONFIG_PUSHPLUS_TOKEN: 'your_pushplus_token'
+            #CONFIG_PUSHPLUS_TITLE: 'Microsoft-Rewards-Script'
+            #CONFIG_PUSHPLUS_TEMPLATE: 'txt'        # txt / html / markdown
+            #CONFIG_PUSHPLUS_CHANNEL: ''             # 默认微信；可选其他 channel
             #
             # Webhook log filter (controls which events trigger webhook notifications, enable when using NTFY):
             #CONFIG_WEBHOOK_LOG_FILTER_ENABLED: 'false'

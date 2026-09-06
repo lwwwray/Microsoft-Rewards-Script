@@ -241,7 +241,7 @@ export class Login {
             if (url.hostname !== 'login.live.com') {
                 foundStates = foundStates.filter(s => s !== 'ERROR_ALERT')
             }
-            if (foundStates.includes('2FA_TOTP')) {
+            if (foundStates.includes('2FA_TOTP') || foundStates.includes('LOGIN_PASSWORDLESS')) {
                 foundStates = foundStates.filter(s => s !== 'ERROR_ALERT')
             }
             if (foundStates.includes('ERROR_ALERT')) return 'ERROR_ALERT'
@@ -322,7 +322,7 @@ export class Login {
             }
 
             case 'GET_A_CODE': {
-                this.bot.logger.info(this.bot.isMobile, 'LOGIN', '尝试绕过"获取代码"页面')
+                this.bot.logger.info(this.bot.isMobile, 'LOGIN', '尝试跳过"获取代码"页面')
 
                 // 尝试查找"其他登录方式"链接
                 const otherWaysLink = await page
@@ -371,7 +371,7 @@ export class Login {
                     return true
                 }
 
-                this.bot.logger.warn(this.bot.isMobile, 'LOGIN', '找不到绕过获取代码页面的方法')
+                this.bot.logger.warn(this.bot.isMobile, 'LOGIN', '找不到跳过获取代码页面的方法')
                 return true
             }
 
@@ -381,9 +381,7 @@ export class Login {
                 await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {
                     this.bot.logger.debug(this.bot.isMobile, 'LOGIN', '主按钮点击后网络空闲超时')
                 })
-                this.bot.logger.info(this.bot.isMobile, 'LOGIN', '启动代码登录处理器')
-                await this.codeLogin.handle(page)
-                this.bot.logger.info(this.bot.isMobile, 'LOGIN', '代码登录处理器完成')
+                // 点击后交还状态机: Authenticator推送页由 LOGIN_PASSWORDLESS 等待手机批准
                 return true
             }
 
@@ -605,7 +603,9 @@ export class Login {
                 }
 
                 const u = new URL(page.url())
-                const atBingHome = u.hostname === 'cn.bing.com' && u.pathname === '/'
+                const atBingHome =
+                    (u.hostname === 'cn.bing.com' || u.hostname === 'www.bing.com') &&
+                    u.pathname === '/'
                 this.bot.logger.debug(
                     this.bot.isMobile,
                     'LOGIN-BING',

@@ -23,8 +23,7 @@ RUN rm -rf node_modules \
     && npm cache clean --force
 
 # Install Chromium Headless Shell, and cleanup
-RUN npx patchright install --with-deps --only-shell chromium \
-    && rm -rf /root/.cache /tmp/* /var/tmp/*
+RUN npx patchright install --with-deps --only-shell chromium 
 
 ###############################################################################
 # Stage 2: Runtime
@@ -95,6 +94,9 @@ RUN mkdir -p ./dist/config \
 # Copy runtime scripts with proper permissions from the start
 COPY --chmod=755 scripts/docker/run_daily.sh ./scripts/docker/run_daily.sh
 COPY --chmod=644 src/crontab.template /etc/cron.d/microsoft-rewards-cron.template
+# 使用 scripts/docker/entrypoint.sh（完整国内适配版：ACCOUNT_* 生成账号、
+# CONFIG_* 覆盖配置、PushPlus、queryEngines/chinaApi 支持）。
+# 根目录的 entrypoint.sh 是简陋旧版，已删除，避免误用。
 COPY --chmod=755 scripts/docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 
 # Entrypoint handles TZ, accounts/config generation, initial run toggle,
