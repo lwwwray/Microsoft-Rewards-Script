@@ -1,6 +1,9 @@
+export type BrowserChannel = 'chromium' | 'msedge'
+
 export interface Config {
     sessionPath: string
     headless: boolean
+    browserChannel?: BrowserChannel
     clusters: number
     errorDiagnostics: boolean
     ensureStreakProtection: boolean
@@ -18,6 +21,26 @@ export interface Config {
     proxy: ConfigProxy
     consoleLogFilter: LogFilter
     webhook: ConfigWebhook
+    humanize?: HumanizeConfig
+}
+
+export interface HumanizeConfig {
+    enabled?: boolean
+    skipWhenCompletedToday?: boolean
+    quietHours?: QuietHoursRule[]
+    searchTargetRatio?: HumanizeRange
+    readToEarnArticles?: HumanizeRange
+}
+
+export interface HumanizeRange {
+    min: number
+    max: number
+}
+
+export interface QuietHoursRule {
+    days: string[]
+    start: string
+    end: string
 }
 
 export type QueryEngine = 'china' | 'google' | 'wikipedia' | 'wikirandom' | 'hackernews' | 'reddit' | 'local'

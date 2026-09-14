@@ -81,6 +81,7 @@
 **通知与监控**
 
 - ✅ PushPlus 微信推送（国内推荐，无需翻墙）
+- ✅ Server酱 微信推送（Turbo 版，扫码获取 SendKey 即用）
 - ✅ 微信 ClawBot 推送（腾讯官方 iLink 直连，免费无第三方服务）
 - ✅ Discord / Telegram / ntfy 推送
 - ✅ 全面日志记录（日志过滤 + 落盘 `logs/` 按天分文件，自动清理 90 天前旧日志）
@@ -192,6 +193,17 @@ ACCOUNT_1_PASSWORD=your_password
 
 > 多账号按 `ACCOUNT_2_*`、`ACCOUNT_3_*` 递增（编号无需连续，按编号升序运行）。完整字段见 `env.example`。
 
+> ⚠️ **Docker 用户注意：`.env` 不会自动传入容器**。Compose 只把同目录 `.env` 用于变量替换；若你自行编写/裁剪了 `compose.yaml`，必须保留 `env_file` 段（本仓库模板已内置），否则容器里一个账号都读不到：
+>
+> ```yaml
+> services:
+>   microsoft-rewards-script:
+>     env_file:
+>       - path: .env
+> ```
+>
+> 另外用**列表式** `environment:`（`- KEY=value`）时值**不要加引号**——引号会成为值的一部分（如 `- CRON_SCHEDULE="0 9 * * *"` 会让 cron 表达式带引号而失效）；映射式（`KEY: value`）则按 YAML 规则正常加引号。
+
 ### 2. 编辑 compose.yaml（可选）
 
 默认配置开箱即用，如需调整取消对应行注释即可：
@@ -201,7 +213,7 @@ ACCOUNT_1_PASSWORD=your_password
 - `RUN_ON_START`：容器启动时是否立即跑一次（默认 `true`）
 - `CONFIG_SEARCH_QUERY_ENGINES`：查询源，国内推荐 `china,local`
 - `CONFIG_CHINA_API_APPKEY`：gmya.net appkey，解除免费档限流（留空走免费档）
-- `CONFIG_PUSHPLUS_*` / `CONFIG_CLAWBOT_*`：微信推送
+- `CONFIG_PUSHPLUS_*` / `CONFIG_SERVERCHAN_*` / `CONFIG_CLAWBOT_*`：微信推送
 
 > 完整的 `CONFIG_*` 环境变量列表见[配置参考](#️-配置参考)各表格。`CONFIG_*` 每次启动都会覆盖 `./config/config.json`。
 
@@ -260,6 +272,7 @@ docker compose restart          # 重启（不重建）
 | --------------------------- | ----------------------------------- | --------------- | ------------------------------------- |
 | `sessionPath`               | 存储浏览器会话的目录                | `sessions`      | —                                     |
 | `headless`                  | 在后台运行浏览器                    | `false`（可见） | Docker 强制 `true`                    |
+| `browserChannel`            | `chromium`（内置补丁版，推荐）或 `msedge`（系统真实 Edge；⚠️ 实验性：Edge 152 + Playwright 1.6x 访问 rewards.bing.com 会崩溃，见 [playwright#41438](https://github.com/microsoft/playwright/issues/41438)，修复后可重试） | `chromium` | `CONFIG_BROWSER_CHANNEL`              |
 | `clusters`                  | 并发账户集群数                      | `1`             | `CONFIG_CLUSTERS`                     |
 | `errorDiagnostics`          | 出错时保存诊断信息到 `diagnostics/` | `false`         | `CONFIG_ERROR_DIAGNOSTICS`            |
 | `ensureStreakProtection`    | 确保连击保护已开启                  | `true`          | `CONFIG_ENSURE_STREAK_PROTECTION`     |
@@ -401,6 +414,33 @@ docker compose restart          # 重启（不重建）
 </details>
 
 <details>
+<summary><b>🧬 Humanize / 拟人化运行策略（V4-china 特有，默认关闭）</b></summary>
+
+降低风控特征的运行策略集合。`humanize.enabled=false`（默认）时以下全部不生效，行为与原版一致。
+
+| 设置                                         | 描述                                                                 | 默认值            | Docker 环境变量                                       |
+| -------------------------------------------- | -------------------------------------------------------------------- | ----------------- | ----------------------------------------------------- |
+| `humanize.enabled`                           | 总开关                                                               | `false`           | `CONFIG_HUMANIZE_ENABLED`                             |
+| `humanize.skipWhenCompletedToday`            | 当天已成功运行过（`logs/last-success.txt`）则再次启动时直接退出，配合早晚两次定时实现"兜底轮自动跳过" | `false` | `CONFIG_HUMANIZE_SKIP_WHEN_COMPLETED`                 |
+| `humanize.quietHours`                        | 静默时段数组；运行中进入时段自动挂起到结束，启动时落在时段内也等待后再跑。支持 `start > end` 跨午夜 | `[]`    | 仅 config.json                                        |
+| `humanize.searchTargetRatio.min` / `.max`    | 每轮搜索目标完成度随机区间（移动/桌面各自抽取），保留分向下取整到 3 的倍数 | `0.85` - `1.0` | `CONFIG_HUMANIZE_SEARCH_TARGET_RATIO_MIN` / `_MAX`    |
+| `humanize.readToEarnArticles.min` / `.max`   | Read-to-Earn 每轮随机阅读篇数上限区间                                 | `7` - `10`        | `CONFIG_HUMANIZE_READ_TO_EARN_MIN` / `_MAX`           |
+
+`quietHours` 规则示例（days 支持全名或缩写，未列出的天不静默）：
+
+```json
+"quietHours": [
+    { "days": ["monday", "tuesday", "wednesday", "thursday", "friday"], "start": "12:00", "end": "14:30" },
+    { "days": ["saturday"], "start": "12:00", "end": "19:00" }
+]
+```
+
+> 💡 想手动强制重跑当天已成功的任务：临时把 `skipWhenCompletedToday` 改为 `false`（或删除 `logs/last-success.txt`）。
+> 拟人化参数不分轮次：无论第几次运行都用同一套随机规则，作用于"当时的剩余额度"。
+
+</details>
+
+<details>
 <summary><b>🌍 Proxy / 代理</b></summary>
 
 | 设置                            | 描述                                | 默认值  | Docker 环境变量                          |
@@ -430,6 +470,7 @@ docker compose restart          # 重启（不重建）
 | `webhook.telegram.enabled` / `.botToken` / `.chatId`                        | Telegram 推送                                   | `false` | `CONFIG_TELEGRAM_ENABLED` / `_BOTTOKEN` / `_CHATID` |
 | `webhook.ntfy.enabled` / `.url` / `.topic` / `.token` 等                    | ntfy 推送                                       | `false` | `CONFIG_NTFY_*`                                     |
 | `webhook.pushplus.enabled` / `.token` / `.title` / `.template` / `.channel` | PushPlus 微信推送                               | `false` | `CONFIG_PUSHPLUS_*`                                 |
+| `webhook.serverchan.enabled` / `.sendKey` / `.title`                        | Server酱 微信推送（Turbo）                      | `false` | `CONFIG_SERVERCHAN_ENABLED` / `_SENDKEY` / `_TITLE` |
 | `webhook.clawbot.enabled` / `.authFile`                                     | 微信 ClawBot 推送                               | `false` | `CONFIG_CLAWBOT_ENABLED` / `_AUTHFILE`              |
 | `webhook.webhookLogFilter.*`                                                | Webhook 逐条日志过滤（结构同 consoleLogFilter） | `false` | `CONFIG_WEBHOOK_LOG_FILTER_*`                       |
 

@@ -63,7 +63,7 @@ services:
             #CONFIG_PUSHPLUS_TITLE: 'Microsoft-Rewards-Script'
             #CONFIG_PUSHPLUS_TEMPLATE: 'txt'        # txt / html / markdown
             #CONFIG_PUSHPLUS_CHANNEL: ''             # 默认微信；可选其他 channel
-            # Server酱 微信推送（sctapi.ftqq.com，sendkey 形如 SCTxxxxxxxx）：
+# Server酱 微信推送（sctapi.ftqq.com，sendkey 形如 SCTxxxxxxxx）：
             #CONFIG_SERVERCHAN_ENABLED: 'true'
             #CONFIG_SERVERCHAN_SENDKEY: 'your_sendkey'
             #CONFIG_SERVERCHAN_TITLE: 'Microsoft-Rewards-Script'

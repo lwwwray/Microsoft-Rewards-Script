@@ -50,6 +50,25 @@ const QueryEngineSchema = z.union([
         .regex(/^rss(\.[A-Za-z0-9_-]+){0,2}$/, 'Invalid rss selector (use rss, rss.<site>, or rss.<site>.<endpoint>)')
 ])
 
+const HumanizeRangeSchema = z.object({
+    min: z.number(),
+    max: z.number()
+})
+
+const QuietHoursRuleSchema = z.object({
+    days: z.array(z.string()),
+    start: z.string(),
+    end: z.string()
+})
+
+const HumanizeSchema = z.object({
+    enabled: z.boolean().optional(),
+    skipWhenCompletedToday: z.boolean().optional(),
+    quietHours: z.array(QuietHoursRuleSchema).optional(),
+    searchTargetRatio: HumanizeRangeSchema.optional(),
+    readToEarnArticles: HumanizeRangeSchema.optional()
+})
+
 const AccountLanguageSchema = z
     .string()
     .trim()
@@ -127,6 +146,7 @@ const WebhookSchema = z.object({
 export const ConfigSchema = z.object({
     sessionPath: z.string(),
     headless: z.boolean(),
+    browserChannel: z.enum(['chromium', 'msedge']).default('chromium'),
     clusters: z.number().int().nonnegative(),
     errorDiagnostics: z.boolean(),
     ensureStreakProtection: z.boolean(),
@@ -187,7 +207,8 @@ export const ConfigSchema = z.object({
         ignoreCertificateErrors: z.boolean().default(false)
     }),
     consoleLogFilter: LogFilterSchema,
-    webhook: WebhookSchema
+    webhook: WebhookSchema,
+    humanize: HumanizeSchema.optional()
 })
 
 const AccountProxySchema = z
@@ -276,6 +297,7 @@ export const AccountSchema = z.object({
 const defaultConfig: Config = {
     sessionPath: 'sessions',
     headless: true,
+    browserChannel: 'chromium',
     clusters: 1,
     errorDiagnostics: true,
     ensureStreakProtection: true,

@@ -11,6 +11,7 @@ export interface EnvOverrideEntry {
 export const ENV_OVERRIDES: EnvOverrideEntry[] = [
     // General
     { env: 'CONFIG_CLUSTERS', path: 'clusters', type: 'number' },
+    { env: 'CONFIG_BROWSER_CHANNEL', path: 'browserChannel', type: 'string' },
     { env: 'CONFIG_DEBUG_LOGS', path: 'debugLogs', type: 'bool' },
     { env: 'CONFIG_ERROR_DIAGNOSTICS', path: 'errorDiagnostics', type: 'bool' },
     { env: 'CONFIG_ENSURE_STREAK_PROTECTION', path: 'ensureStreakProtection', type: 'bool' },
@@ -87,11 +88,19 @@ export const ENV_OVERRIDES: EnvOverrideEntry[] = [
     { env: 'CONFIG_PUSHPLUS_TEMPLATE', path: 'webhook.pushplus.template', type: 'string' },
     { env: 'CONFIG_PUSHPLUS_CHANNEL', path: 'webhook.pushplus.channel', type: 'string' },
 
-    // ServerChan webhook（Server酱 微信推送）
+// ServerChan webhook（Server酱 微信推送）
     { env: 'CONFIG_SERVERCHAN_ENABLED', path: 'webhook.serverchan.enabled', type: 'bool' },
     { env: 'CONFIG_SERVERCHAN_SENDKEY', path: 'webhook.serverchan.sendkey', type: 'string' },
     { env: 'CONFIG_SERVERCHAN_TITLE', path: 'webhook.serverchan.title', type: 'string' },
     { env: 'CONFIG_SERVERCHAN_SHORT', path: 'webhook.serverchan.short', type: 'string' },
+
+    // Humanize 拟人化运行策略（quietHours 为数组结构，请直接编辑 config.json）
+    { env: 'CONFIG_HUMANIZE_ENABLED', path: 'humanize.enabled', type: 'bool' },
+    { env: 'CONFIG_HUMANIZE_SKIP_WHEN_COMPLETED', path: 'humanize.skipWhenCompletedToday', type: 'bool' },
+    { env: 'CONFIG_HUMANIZE_SEARCH_TARGET_RATIO_MIN', path: 'humanize.searchTargetRatio.min', type: 'number' },
+    { env: 'CONFIG_HUMANIZE_SEARCH_TARGET_RATIO_MAX', path: 'humanize.searchTargetRatio.max', type: 'number' },
+    { env: 'CONFIG_HUMANIZE_READ_TO_EARN_MIN', path: 'humanize.readToEarnArticles.min', type: 'number' },
+    { env: 'CONFIG_HUMANIZE_READ_TO_EARN_MAX', path: 'humanize.readToEarnArticles.max', type: 'number' },
 
     // ClawBot webhook（微信 ClawBot 直连推送，凭证由扫码生成）
     { env: 'CONFIG_CLAWBOT_ENABLED', path: 'webhook.clawbot.enabled', type: 'bool' },
