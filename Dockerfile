@@ -1,8 +1,8 @@
 ###############################################################################
 # Stage 1: Builder
 ###############################################################################
-# 国内镜像源加速拉取（m.daocloud.io 代理 Docker Hub）；海外环境可改回 node:24-slim
-FROM m.daocloud.io/docker.io/library/node:24-slim AS builder
+# daocloud 镜像源（m.daocloud.io）2026-09 起匿名拉取返回 401，改回官方 Docker Hub 源
+FROM node:24-slim AS builder
 
 WORKDIR /usr/src/microsoft-rewards-script
 
@@ -26,7 +26,7 @@ RUN rm -rf node_modules \
 ###############################################################################
 # Stage 2: Runtime
 ###############################################################################
-FROM m.daocloud.io/docker.io/library/node:24-slim AS runtime
+FROM node:24-slim AS runtime
 
 WORKDIR /usr/src/microsoft-rewards-script
 
@@ -86,6 +86,8 @@ COPY --from=builder /usr/src/microsoft-rewards-script/node_modules ./node_module
 
 # Install patchright's stealth-patched Chromium headless shell.
 # The container is headless-only so the full browser isn't needed; then clean up
+# chromium 二进制走 npmmirror 国内镜像（cdn.playwright.dev 国内直连极慢，2026-11 实测 114MB 约 10 分钟）
+ENV PLAYWRIGHT_DOWNLOAD_HOST=https://cdn.npmmirror.com/binaries/playwright
 RUN set -eux; \
     npx patchright install --with-deps --only-shell chromium; \
     rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*

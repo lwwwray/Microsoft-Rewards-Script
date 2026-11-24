@@ -15,19 +15,20 @@ export async function sendServerChan(
     content: string,
     titleOverride?: string
 ): Promise<void> {
-    if (!config?.sendkey) return
+    const sendKey = config?.sendkey || config?.sendKey
+    if (!sendKey) return
 
     const title = (titleOverride ?? config.title ?? 'Microsoft Rewards 通知').slice(0, 32)
 
     const request: HttpRequestConfig = {
         method: 'POST',
-        url: `https://sctapi.ftqq.com/${config.sendkey}.send`,
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        data: new URLSearchParams({
+        url: `https://sctapi.ftqq.com/${sendKey}.send`,
+        headers: { 'Content-Type': 'application/json' },
+        data: {
             title,
             desp: content,
             ...(config.short ? { short: config.short.slice(0, 64) } : {})
-        }).toString(),
+        },
         timeout: 10000
     }
 
@@ -37,6 +38,7 @@ export async function sendServerChan(
         } catch (err) {
             const status = (err as { response?: { status?: number } })?.response?.status
             if (status === 429) return
+            console.warn(`[ServerChan] Failed to send webhook${status ? ` (HTTP ${status})` : ''}`)
         }
     })
 }

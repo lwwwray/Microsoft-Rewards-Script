@@ -8,11 +8,7 @@ export class ClaimReward extends BaseActivity {
 
         const actionId = this.bot.nextActions.reportActivity
         if (!actionId) {
-            this.bot.logger.warn(
-                this.bot.isMobile,
-                'CLAIM-REWARD',
-                `跳过 ${offerId}：bundle 中未发现 "reportActivity"`
-            )
+            this.bot.logger.warn(this.bot.isMobile, 'CLAIM-REWARD', `跳过 ${offerId}：bundle 中未发现 "reportActivity"`)
             return
         }
 
@@ -21,11 +17,7 @@ export class ClaimReward extends BaseActivity {
             return
         }
         if (!child.reportable) {
-            this.bot.logger.warn(
-                this.bot.isMobile,
-                'CLAIM-REWARD',
-                `跳过 ${offerId}：不可上报（已完成/已锁定/已禁用）`
-            )
+            this.bot.logger.warn(this.bot.isMobile, 'CLAIM-REWARD', `跳过 ${offerId}：不可上报（已完成/已锁定/已禁用）`)
             return
         }
 
@@ -39,6 +31,7 @@ export class ClaimReward extends BaseActivity {
 
         try {
             const questUrl = URLs.rewards.quest(parentId)
+            this.markExecuted()
             const { status, acknowledged } = await this.bot.browser.func.reportServerAction(
                 actionId,
                 [

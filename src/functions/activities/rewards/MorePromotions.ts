@@ -17,11 +17,7 @@ export class MorePromotions extends BaseActivity {
 
         const pending = promotions.filter(promotion => this.isActionable(promotion))
         if (!pending.length) {
-            this.bot.logger.info(
-                this.bot.isMobile,
-                'MORE-PROMOTIONS',
-                '所有"更多推广"项目已完成'
-            )
+            this.bot.logger.info(this.bot.isMobile, 'MORE-PROMOTIONS', '所有"更多推广"项目已完成')
             return
         }
 
@@ -30,7 +26,7 @@ export class MorePromotions extends BaseActivity {
             'MORE-PROMOTIONS',
             `开始解决"更多推广"项目 | remaining=${pending.length}`
         )
-        await new PromotionActivityRunner(this.bot).run(pending)
+        if (await new PromotionActivityRunner(this.bot).run(pending)) this.markExecuted()
         this.bot.logger.info(this.bot.isMobile, 'MORE-PROMOTIONS', '"更多推广"项目处理完毕')
     }
 

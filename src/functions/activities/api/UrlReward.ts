@@ -12,11 +12,7 @@ export class UrlReward extends BaseActivity {
 
         const actionId = this.bot.nextActions.reportActivity
         if (!actionId) {
-            this.bot.logger.warn(
-                this.bot.isMobile,
-                'URL-REWARD',
-                `跳过 ${offerId}：bundle 中未发现 "reportActivity"`
-            )
+            this.bot.logger.warn(this.bot.isMobile, 'URL-REWARD', `跳过 ${offerId}：bundle 中未发现 "reportActivity"`)
             return
         }
 
@@ -62,6 +58,7 @@ export class UrlReward extends BaseActivity {
         )
 
         try {
+            this.markExecuted()
             const { status, acknowledged, availablePoints } = await this.bot.browser.func.reportServerAction(
                 actionId,
                 [
@@ -76,7 +73,7 @@ export class UrlReward extends BaseActivity {
                 {
                     url: URLs.rewards.dashboard,
                     referer: URLs.rewards.dashboard,
-                    routerStateTree: this.bot.browser.react.routerStateTree('dashboard')
+                    routerStateTree: this.bot.browser.react.pageRouterStateTree('dashboard')
                 }
             )
 

@@ -49,11 +49,7 @@ export class ActivateSearchPerk extends BaseActivity {
     public async activate(data: DashboardData) {
         const perk = detectSearchMultiplierPerk(data.dashboard)
         if (!perk) {
-            this.bot.logger.debug(
-                this.bot.isMobile,
-                'ACTIVATE-SEARCH-PERK',
-                'dashboard 上没有搜索倍数加成'
-            )
+            this.bot.logger.debug(this.bot.isMobile, 'ACTIVATE-SEARCH-PERK', 'dashboard 上没有搜索倍数加成')
             return
         }
 
@@ -94,6 +90,7 @@ export class ActivateSearchPerk extends BaseActivity {
             'ACTIVATE-SEARCH-PERK',
             `正在激活 ${perk.multiplier}x 搜索加成 | offerId=${perk.offerId} | geo=${this.bot.userData.geoLocale}`
         )
+        this.markExecuted()
 
         try {
             const { status, acknowledged } = await this.bot.browser.func.reportServerAction(actionId, [

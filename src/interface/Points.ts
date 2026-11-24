@@ -1,15 +1,15 @@
 export interface BrowserEarnablePoints {
-    desktopSearchPoints: number
-    mobileSearchPoints: number
+    desktopSearchPoints: number | null
+    mobileSearchPoints: number | null
     dailySetPoints: number
     morePromotionsPoints: number
-    totalEarnablePoints: number
+    totalEarnablePoints: number | null
 }
 
 export interface AppEarnablePoints {
     readToEarn: number
-    checkIn: number
-    totalEarnablePoints: number
+    checkIn: number | null
+    totalEarnablePoints: number | null
 }
 
 export interface MissingSearchPoints {

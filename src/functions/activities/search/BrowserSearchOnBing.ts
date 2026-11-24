@@ -23,13 +23,9 @@ export class SearchOnBing extends BaseActivity {
         )
 
         try {
-            const activated = await activateSearchOnBing(this.bot, promotion)
+            const activated = await activateSearchOnBing(this.bot, promotion, () => this.markExecuted())
             if (!activated) {
-                this.bot.logger.warn(
-                    this.bot.isMobile,
-                    'SEARCH-ON-BING',
-                    `搜索活动无法激活，中止 | offerId=${offerId}`
-                )
+                this.bot.logger.warn(this.bot.isMobile, 'SEARCH-ON-BING', `搜索活动无法激活，中止 | offerId=${offerId}`)
                 return
             }
 
